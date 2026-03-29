@@ -28,9 +28,13 @@ interface ProductUrlRow {
 // ---------------------------------------------------------------------------
 
 export async function GET(request: Request) {
-  // 1. Verify CRON_SECRET from Authorization header
+  // 1. Verify CRON_SECRET from Authorization header or query param
   const authHeader = request.headers.get("authorization");
-  if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
+  const { searchParams } = new URL(request.url);
+  const querySecret = searchParams.get("secret");
+  const isAuthorized =
+    authHeader === `Bearer ${CRON_SECRET}` || querySecret === CRON_SECRET;
+  if (CRON_SECRET && !isAuthorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
