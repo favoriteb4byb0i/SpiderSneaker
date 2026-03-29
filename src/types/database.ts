@@ -9,9 +9,22 @@ export type Brand =
   | "Vans"
   | "Jordan"
   | "Yeezy"
+  | "On"
+  | "Salomon"
+  | "Hoka"
   | "Other";
 
-export type SiteName = "zalando" | "aboutyou" | "snipes" | "snkrs";
+export type SiteName =
+  | "zalando"
+  | "aboutyou"
+  | "snipes"
+  | "nike"
+  | "adidas"
+  | "footlocker"
+  | "jdsports"
+  | "asphaltgold"
+  | "bstn"
+  | "solebox";
 
 export interface Model {
   id: string;
@@ -19,7 +32,17 @@ export interface Model {
   brand: Brand;
   image_url: string | null;
   category: string | null;
-  created_by: string;
+  sku: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface ProductUrl {
+  id: string;
+  model_id: string;
+  site: SiteName;
+  url: string;
+  active: boolean;
   created_at: string;
 }
 

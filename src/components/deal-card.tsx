@@ -23,14 +23,26 @@ const siteLabels: Record<SiteName, string> = {
   zalando: "Zalando",
   aboutyou: "About You",
   snipes: "Snipes",
-  snkrs: "SNKRS",
+  nike: "Nike",
+  adidas: "Adidas",
+  footlocker: "Foot Locker",
+  jdsports: "JD Sports",
+  asphaltgold: "Asphaltgold",
+  bstn: "BSTN",
+  solebox: "Solebox",
 };
 
 const siteColors: Record<SiteName, string> = {
   zalando: "#FF6900",
   aboutyou: "#DC143C",
   snipes: "#E30613",
-  snkrs: "#111111",
+  nike: "#111111",
+  adidas: "#000000",
+  footlocker: "#CE1126",
+  jdsports: "#000000",
+  asphaltgold: "#D4AF37",
+  bstn: "#222222",
+  solebox: "#1B1B1B",
 };
 
 export function DealCard({
