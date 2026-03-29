@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+// SneakerDeal — deployed on Vercel
 const nextConfig = {
   images: {
     remotePatterns: [
