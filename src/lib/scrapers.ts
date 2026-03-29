@@ -105,7 +105,7 @@ export async function fetchWithRetry(
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 15_000);
+      const timeout = setTimeout(() => controller.abort(), 8_000);
 
       const response = await fetch(url, {
         headers: SCRAPER_HEADERS,
@@ -311,6 +311,29 @@ function computeDiscount(
   return Math.round(((original - price) / original) * 100);
 }
 
+/**
+ * Last resort: extract any price-like number from raw HTML using regex.
+ * Looks for patterns like "149,99", "89.99" near price/currency indicators.
+ */
+function extractPriceFromHtml(html: string): number | null {
+  // Look for price patterns near EUR/€ symbols
+  const patterns = [
+    /(?:€|EUR)\s*(\d{1,4}[.,]\d{2})/gi,
+    /(\d{1,4}[.,]\d{2})\s*(?:€|EUR)/gi,
+    /"price"\s*:\s*"?(\d{1,4}\.?\d{0,2})"?/gi,
+    /"currentPrice"\s*:\s*"?(\d{1,4}\.?\d{0,2})"?/gi,
+    /"salePrice"\s*:\s*"?(\d{1,4}\.?\d{0,2})"?/gi,
+  ];
+  for (const pattern of patterns) {
+    const match = pattern.exec(html);
+    if (match?.[1]) {
+      const price = parseEuroPrice(match[1]);
+      if (price && price > 10 && price < 2000) return price;
+    }
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Per-site scrapers
 // ---------------------------------------------------------------------------
@@ -322,53 +345,58 @@ export async function scrapeZalando(url: string): Promise<ScrapedResult | null> 
   try {
     const $ = cheerio.load(html);
 
-    // Try JSON-LD first
+    // Strategy 1: Parse __NEXT_DATA__ JSON (most reliable for Zalando)
+    const nextDataScript = $("#__NEXT_DATA__").html();
+    if (nextDataScript) {
+      try {
+        const nextData = JSON.parse(nextDataScript);
+        const props = nextData?.props?.pageProps;
+        if (props) {
+          // Navigate through product data structure
+          const product = props.product || props.data?.product;
+          if (product) {
+            const price = product.price?.current?.value ?? product.simplePrice?.current?.value;
+            const origPrice = product.price?.original?.value ?? product.simplePrice?.original?.value;
+            if (price) {
+              return {
+                price,
+                original_price: origPrice && origPrice > price ? origPrice : null,
+                discount_pct: origPrice && origPrice > price ? Math.round(((origPrice - price) / origPrice) * 100) : null,
+                title: product.name ?? product.displayName ?? null,
+                image_url: product.images?.[0]?.url ?? product.media?.[0]?.uri ?? null,
+                available: true,
+              };
+            }
+          }
+        }
+      } catch { /* not valid JSON, try next strategy */ }
+    }
+
+    // Strategy 2: JSON-LD
     const ld = extractJsonLd($);
     if (ld) {
       const result = resultFromJsonLd(ld);
       if (result && result.price !== null) {
-        // Try to enrich with original price from DOM
-        const origText = firstText($, [
-          '[data-testid="original-price"]',
-          ".z-1qe4jx6 s",
-          ".z-1qe4jx6 del",
-        ]);
-        if (origText) {
-          result.original_price = parseEuroPrice(origText);
-          result.discount_pct = computeDiscount(
-            result.price,
-            result.original_price,
-          );
-        }
         if (!result.title) result.title = pageTitle($);
         if (!result.image_url) result.image_url = firstImage($);
         return result;
       }
     }
 
-    // Fallback: CSS selectors
-    const priceText = firstText($, [
-      '[data-testid="price"]',
-      ".z-1qe4jx6",
-      '[class*="price"]',
-    ]);
-    const price = priceText ? parseEuroPrice(priceText) : null;
+    // Strategy 3: Regex price extraction from raw HTML
+    const regexPrice = extractPriceFromHtml(html);
+    if (regexPrice) {
+      return {
+        price: regexPrice,
+        original_price: null,
+        discount_pct: null,
+        title: pageTitle($),
+        image_url: firstImage($),
+        available: true,
+      };
+    }
 
-    const origText = firstText($, [
-      '[data-testid="original-price"]',
-      ".z-1qe4jx6 s",
-      ".z-1qe4jx6 del",
-    ]);
-    const originalPrice = origText ? parseEuroPrice(origText) : null;
-
-    return {
-      price,
-      original_price: originalPrice,
-      discount_pct: computeDiscount(price, originalPrice),
-      title: pageTitle($),
-      image_url: firstImage($),
-      available: price !== null,
-    };
+    return null;
   } catch (err) {
     console.error("[scrapers] scrapeZalando error:", err);
     return null;
@@ -376,56 +404,56 @@ export async function scrapeZalando(url: string): Promise<ScrapedResult | null> 
 }
 
 export async function scrapeNike(url: string): Promise<ScrapedResult | null> {
-  const html = await fetchWithRetry(url);
-  if (!html) return null;
-
   try {
-    const $ = cheerio.load(html);
+    // Strategy 1: Try Nike's public product API using style-color from URL
+    // URL format: https://www.nike.com/de/t/air-max-90-schuh-6n5Gx5/CN8490-001
+    const styleColorMatch = url.match(/\/([A-Z0-9]+-[A-Z0-9]+)\s*$/i) || url.match(/\/([A-Z]{2}\d{3,}[A-Za-z0-9-]+)/);
+    if (styleColorMatch) {
+      const styleColor = styleColorMatch[1];
+      const apiUrl = `https://api.nike.com/product_feed/threads/v3/?filter=marketplace(DE)&filter=language(de)&filter=productInfo.merchProduct.styleColor(${styleColor})`;
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8_000);
+        const res = await fetch(apiUrl, {
+          headers: { "Accept": "application/json", "User-Agent": SCRAPER_HEADERS["User-Agent"] },
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        if (res.ok) {
+          const data = await res.json();
+          const thread = data?.objects?.[0];
+          const productInfo = thread?.productInfo?.[0];
+          if (productInfo) {
+            const merch = productInfo.merchProduct;
+            const price = merch?.currentPrice ?? productInfo.merchPrice?.currentPrice;
+            const fullPrice = merch?.fullPrice ?? productInfo.merchPrice?.fullPrice;
+            if (price) {
+              return {
+                price,
+                original_price: fullPrice && fullPrice > price ? fullPrice : null,
+                discount_pct: fullPrice && fullPrice > price ? Math.round(((fullPrice - price) / fullPrice) * 100) : null,
+                title: productInfo.productContent?.title ?? thread?.publishedContent?.properties?.title ?? null,
+                image_url: thread?.publishedContent?.properties?.coverCard?.properties?.portraitURL ?? productInfo.imageUrls?.productImageUrl ?? null,
+                available: merch?.status === "ACTIVE",
+              };
+            }
+          }
+        }
+      } catch { /* API failed, try HTML */ }
+    }
 
+    // Strategy 2: Fetch HTML and try JSON-LD / regex
+    const html = await fetchWithRetry(url);
+    if (!html) return null;
+    const $ = cheerio.load(html);
     const ld = extractJsonLd($);
     if (ld) {
       const result = resultFromJsonLd(ld);
-      if (result && result.price !== null) {
-        // Check for initial (original) vs current (sale) price in DOM
-        const initialText = firstText($, [
-          ".is-initial-price",
-          '[data-test="product-price-reduced"]',
-        ]);
-        if (initialText) {
-          result.original_price = parseEuroPrice(initialText);
-          result.discount_pct = computeDiscount(
-            result.price,
-            result.original_price,
-          );
-        }
-        if (!result.title) result.title = pageTitle($);
-        if (!result.image_url) result.image_url = firstImage($);
-        return result;
-      }
+      if (result && result.price !== null) return result;
     }
-
-    // Fallback
-    const currentText = firstText($, [
-      ".is-current-price",
-      '[data-test="product-price"]',
-      ".product-price",
-    ]);
-    const price = currentText ? parseEuroPrice(currentText) : null;
-
-    const initialText = firstText($, [
-      ".is-initial-price",
-      '[data-test="product-price-reduced"]',
-    ]);
-    const originalPrice = initialText ? parseEuroPrice(initialText) : null;
-
-    return {
-      price,
-      original_price: originalPrice,
-      discount_pct: computeDiscount(price, originalPrice),
-      title: pageTitle($),
-      image_url: firstImage($),
-      available: price !== null,
-    };
+    const regexPrice = extractPriceFromHtml(html);
+    if (regexPrice) return { price: regexPrice, original_price: null, discount_pct: null, title: pageTitle($), image_url: firstImage($), available: true };
+    return null;
   } catch (err) {
     console.error("[scrapers] scrapeNike error:", err);
     return null;
@@ -433,80 +461,57 @@ export async function scrapeNike(url: string): Promise<ScrapedResult | null> {
 }
 
 export async function scrapeAdidas(url: string): Promise<ScrapedResult | null> {
-  const html = await fetchWithRetry(url);
-  if (!html) return null;
-
   try {
-    const $ = cheerio.load(html);
+    // Strategy 1: Adidas public product API using SKU from URL
+    // URL: https://www.adidas.de/samba-og-schuh/B75806.html → SKU = B75806
+    const skuMatch = url.match(/\/([A-Z0-9]{5,12})\.html/i) || url.match(/\/([A-Z]{1,2}\d{4,}[A-Za-z0-9-]*)/);
+    if (skuMatch) {
+      const sku = skuMatch[1];
+      const apiUrl = `https://www.adidas.de/api/products/${sku}`;
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8_000);
+        const res = await fetch(apiUrl, {
+          headers: { "Accept": "application/json", "User-Agent": SCRAPER_HEADERS["User-Agent"] },
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        if (res.ok) {
+          const data = await res.json();
+          const price = data.pricing_information?.currentPrice ?? data.price;
+          const origPrice = data.pricing_information?.standard_price ?? data.pricing_information?.undiscounted_price;
+          if (price) {
+            return {
+              price: typeof price === "string" ? parseFloat(price) : price,
+              original_price: origPrice && origPrice > price ? (typeof origPrice === "string" ? parseFloat(origPrice) : origPrice) : null,
+              discount_pct: origPrice && origPrice > price ? Math.round(((origPrice - price) / origPrice) * 100) : null,
+              title: data.name ?? data.model_number ?? null,
+              image_url: data.view_list?.[0]?.image_url ?? data.image?.src ?? null,
+              available: data.availability_status === "IN_STOCK" || data.in_stock === true,
+            };
+          }
+        }
+      } catch { /* API failed, try HTML */ }
+    }
 
+    // Strategy 2: HTML scraping
+    const html = await fetchWithRetry(url);
+    if (!html) return null;
+    const $ = cheerio.load(html);
     const ld = extractJsonLd($);
     if (ld) {
       const result = resultFromJsonLd(ld);
-      if (result && result.price !== null) {
-        // Check for sale price indicators in DOM
-        const saleText = firstText($, [
-          ".gl-price-item--sale",
-          '[data-auto-id="gl-price-item--sale"]',
-        ]);
-        if (saleText) {
-          // If JSON-LD gave us the sale price, the non-sale element is original
-          const origText = firstText($, [
-            ".gl-price-item--crossed",
-            ".gl-price-item:not(.gl-price-item--sale)",
-            '[data-auto-id="gl-price-item"]',
-          ]);
-          if (origText) {
-            result.original_price = parseEuroPrice(origText);
-            result.discount_pct = computeDiscount(
-              result.price,
-              result.original_price,
-            );
-          }
-        }
-        if (!result.title) result.title = pageTitle($);
-        if (!result.image_url) result.image_url = firstImage($);
-        return result;
-      }
+      if (result && result.price !== null) return result;
     }
-
-    // Fallback
-    const saleText = firstText($, [
-      ".gl-price-item--sale",
-      '[data-auto-id="gl-price-item--sale"]',
-    ]);
-    const regularText = firstText($, [
-      ".gl-price-item",
-      '[data-auto-id="gl-price-item"]',
-    ]);
-
-    const price = saleText
-      ? parseEuroPrice(saleText)
-      : regularText
-        ? parseEuroPrice(regularText)
-        : null;
-
-    let originalPrice: number | null = null;
-    if (saleText && regularText) {
-      const origText = firstText($, [
-        ".gl-price-item--crossed",
-        ".gl-price-item:not(.gl-price-item--sale)",
-      ]);
-      originalPrice = origText ? parseEuroPrice(origText) : null;
-    }
-
-    return {
-      price,
-      original_price: originalPrice,
-      discount_pct: computeDiscount(price, originalPrice),
-      title: pageTitle($),
-      image_url: firstImage($),
-      available: price !== null,
-    };
+    const regexPrice = extractPriceFromHtml(html);
+    if (regexPrice) return { price: regexPrice, original_price: null, discount_pct: null, title: pageTitle($), image_url: firstImage($), available: true };
+    return null;
   } catch (err) {
     console.error("[scrapers] scrapeAdidas error:", err);
     return null;
   }
 }
+
 
 export async function scrapeSnipes(url: string): Promise<ScrapedResult | null> {
   const html = await fetchWithRetry(url);
