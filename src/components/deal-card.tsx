@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import Image from "next/image";
 import { ExternalLink, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -65,7 +66,7 @@ export function DealCard({
       )}
     >
       {/* Image section */}
-      <div className="relative aspect-square w-full overflow-hidden bg-neutral-900">
+      <Link href={`/model/${model.id}`} className="relative aspect-square w-full overflow-hidden bg-neutral-900 block">
         <Image
           src={imageUrl}
           alt={`${model.brand} ${model.name}`}
@@ -80,6 +81,7 @@ export function DealCard({
             type="button"
             onClick={(e) => {
               e.preventDefault();
+              e.stopPropagation();
               onWatchlistToggle();
             }}
             className={cn(
@@ -119,7 +121,7 @@ export function DealCard({
             {siteLabels[site]}
           </span>
         </div>
-      </div>
+      </Link>
 
       {/* Info section */}
       <div className="flex flex-1 flex-col gap-2 p-4">
@@ -127,9 +129,9 @@ export function DealCard({
           <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">
             {model.brand}
           </p>
-          <h3 className="mt-0.5 text-sm font-semibold leading-tight text-white line-clamp-2">
+          <Link href={`/model/${model.id}`} className="mt-0.5 block text-sm font-semibold leading-tight text-white line-clamp-2 hover:text-blue-400 transition-colors">
             {model.name}
-          </h3>
+          </Link>
         </div>
 
         {/* Pricing */}

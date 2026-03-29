@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SaleEvent } from "@/types/database";
 
@@ -31,15 +33,9 @@ function formatEventDate(dateString: string): string {
   });
 }
 
-export function SaleEventCard({ event }: SaleEventCardProps) {
+function CardContent({ event }: SaleEventCardProps) {
   return (
-    <div
-      className={cn(
-        "group relative overflow-hidden rounded-2xl p-5",
-        "bg-[#1A1A1A] border border-neutral-800",
-        "transition-colors hover:border-neutral-700",
-      )}
-    >
+    <>
       {/* Site color accent bar */}
       {event.site && (
         <div
@@ -70,7 +66,36 @@ export function SaleEventCard({ event }: SaleEventCardProps) {
             {event.description}
           </p>
         )}
+
+        {event.site && (
+          <span className="mt-2 inline-flex w-fit items-center gap-1.5 text-xs font-semibold text-blue-400 group-hover:text-blue-300 transition-colors">
+            View Shop
+            <ExternalLink size={12} />
+          </span>
+        )}
       </div>
+    </>
+  );
+}
+
+export function SaleEventCard({ event }: SaleEventCardProps) {
+  const cardClasses = cn(
+    "group relative overflow-hidden rounded-2xl p-5",
+    "bg-[#1A1A1A] border border-neutral-800",
+    "transition-colors hover:border-neutral-700",
+  );
+
+  if (event.site) {
+    return (
+      <Link href={`/shops/${event.site}`} className={cn(cardClasses, "block")}>
+        <CardContent event={event} />
+      </Link>
+    );
+  }
+
+  return (
+    <div className={cardClasses}>
+      <CardContent event={event} />
     </div>
   );
 }
