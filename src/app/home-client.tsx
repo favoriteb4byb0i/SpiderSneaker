@@ -5,15 +5,17 @@ import { Zap, Bell, Package } from "lucide-react";
 import { DealCard } from "@/components/deal-card";
 import { ShopGrid } from "@/components/shop-grid";
 import { SaleEventCard } from "@/components/sale-event-card";
-import type { Model, PriceSnapshot, SaleEvent, Shop } from "@/types/database";
+import { PromoCard } from "@/components/promo-card";
+import type { Model, PriceSnapshot, SaleEvent, Shop, ActivePromo } from "@/types/database";
 
 interface HomeClientProps {
   deals: (PriceSnapshot & { model: Model })[];
   events: SaleEvent[];
   shops: Shop[];
+  promos: ActivePromo[];
 }
 
-export function HomeClient({ deals, events, shops }: HomeClientProps) {
+export function HomeClient({ deals, events, shops, promos }: HomeClientProps) {
   return (
     <div className="space-y-8 p-4 md:p-6">
       {/* Mobile Header */}
@@ -82,6 +84,22 @@ export function HomeClient({ deals, events, shops }: HomeClientProps) {
           </div>
         )}
       </section>
+
+      {/* Aktuelle Aktionen (Current Promotions) */}
+      {promos.length > 0 && (
+        <section>
+          <h2 className="mb-4 text-xl font-bold text-white">
+            Aktuelle Aktionen
+          </h2>
+          <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide md:grid md:grid-cols-2 md:overflow-x-visible">
+            {promos.slice(0, 4).map((promo) => (
+              <div key={promo.id} className="w-72 shrink-0 md:w-auto">
+                <PromoCard promo={promo} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Shops */}
       <section>

@@ -86,6 +86,19 @@ export interface NotificationSetting {
   promo_alert: boolean;
 }
 
+export interface ActivePromo {
+  id: string;
+  site: SiteName;
+  title: string;
+  code: string | null;
+  discount_text: string;
+  instructions: string | null;
+  valid_until: string | null;
+  stackable: boolean;
+  url: string | null;
+  created_at: string;
+}
+
 export interface DealAlert {
   id: string;
   user_id: string;

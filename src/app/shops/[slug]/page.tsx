@@ -1,4 +1,4 @@
-import { getDealsBySite, getEvents } from "@/lib/queries";
+import { getDealsBySite, getEvents, getPromosBySite } from "@/lib/queries";
 import { getShopBySlug } from "@/lib/constants";
 import { ShopDetailClient } from "./shop-detail-client";
 
@@ -21,9 +21,10 @@ export default async function ShopDetailPage({ params }: ShopDetailPageProps) {
     );
   }
 
-  const [deals, allEvents] = await Promise.all([
+  const [deals, allEvents, promos] = await Promise.all([
     getDealsBySite(slug),
     getEvents(),
+    getPromosBySite(slug),
   ]);
 
   const shopEvents = allEvents.filter((e) => e.site === slug);
@@ -33,6 +34,7 @@ export default async function ShopDetailPage({ params }: ShopDetailPageProps) {
       shop={{ ...shop, activeDeals: deals.length }}
       events={shopEvents}
       deals={deals}
+      promos={promos}
     />
   );
 }

@@ -14,7 +14,7 @@ export const SHOPS: Shop[] = [
     name: "About You",
     logo: "/shops/aboutyou.svg",
     url: "https://www.aboutyou.de",
-    color: "#1A1A1A",
+    color: "#DC143C",
     activeDeals: 0,
   },
   {
@@ -30,7 +30,7 @@ export const SHOPS: Shop[] = [
     name: "Nike",
     logo: "/shops/nike.svg",
     url: "https://www.nike.com/de",
-    color: "#111111",
+    color: "#F56B00",
     activeDeals: 0,
   },
   {
@@ -38,7 +38,7 @@ export const SHOPS: Shop[] = [
     name: "Adidas",
     logo: "/shops/adidas.svg",
     url: "https://www.adidas.de",
-    color: "#000000",
+    color: "#4A90D9",
     activeDeals: 0,
   },
   {
@@ -54,7 +54,7 @@ export const SHOPS: Shop[] = [
     name: "JD Sports",
     logo: "/shops/jdsports.svg",
     url: "https://www.jdsports.de",
-    color: "#000000",
+    color: "#7AB648",
     activeDeals: 0,
   },
   {
@@ -70,7 +70,7 @@ export const SHOPS: Shop[] = [
     name: "BSTN",
     logo: "/shops/bstn.svg",
     url: "https://www.bstn.com",
-    color: "#222222",
+    color: "#8B5CF6",
     activeDeals: 0,
   },
   {
@@ -78,7 +78,7 @@ export const SHOPS: Shop[] = [
     name: "Solebox",
     logo: "/shops/solebox.svg",
     url: "https://www.solebox.com",
-    color: "#1B1B1B",
+    color: "#E91E63",
     activeDeals: 0,
   },
 ];

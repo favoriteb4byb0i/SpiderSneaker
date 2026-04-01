@@ -3,6 +3,7 @@ import {
   getLatestPricesForModel,
   getPriceHistory,
   getProductUrls,
+  getActivePromos,
 } from "@/lib/queries";
 import { ModelDetailClient } from "./model-detail-client";
 
@@ -25,10 +26,11 @@ export default async function ModelDetailPage({ params }: ModelDetailPageProps) 
     );
   }
 
-  const [prices, priceHistory, productUrls] = await Promise.all([
+  const [prices, priceHistory, productUrls, promos] = await Promise.all([
     getLatestPricesForModel(id),
     getPriceHistory(id),
     getProductUrls(id),
+    getActivePromos(),
   ]);
 
   return (
@@ -37,6 +39,7 @@ export default async function ModelDetailPage({ params }: ModelDetailPageProps) 
       prices={prices}
       priceHistory={priceHistory}
       productUrls={productUrls}
+      promos={promos}
     />
   );
 }

@@ -6,7 +6,8 @@ import { PriceTag } from "@/components/price-tag";
 import { DiscountBadge } from "@/components/discount-badge";
 import { PriceHistoryChart } from "@/components/price-history-chart";
 import { formatPrice } from "@/lib/utils";
-import type { Model, PriceSnapshot, ProductUrl, SiteName } from "@/types/database";
+import { PromoCard } from "@/components/promo-card";
+import type { Model, PriceSnapshot, ProductUrl, SiteName, ActivePromo } from "@/types/database";
 
 const siteLabels: Record<SiteName, string> = {
   zalando: "Zalando",
@@ -26,6 +27,7 @@ interface ModelDetailClientProps {
   prices: PriceSnapshot[];
   priceHistory: { date: string; price: number }[];
   productUrls: ProductUrl[];
+  promos: ActivePromo[];
 }
 
 export function ModelDetailClient({
@@ -33,6 +35,7 @@ export function ModelDetailClient({
   prices,
   priceHistory,
   productUrls,
+  promos,
 }: ModelDetailClientProps) {
   // Deduplicate prices: keep only the latest snapshot per site
   const latestBySite = new Map<SiteName, PriceSnapshot>();
@@ -143,6 +146,44 @@ export function ModelDetailClient({
               </div>
             </div>
           )}
+
+          {/* Aktive Aktionen (Active Promotions) */}
+          {(() => {
+            const sitesWithPrices = new Set(uniquePrices.map((p) => p.site));
+            const relevantPromos = promos.filter((promo) => sitesWithPrices.has(promo.site));
+            if (relevantPromos.length === 0) return null;
+            return (
+              <div className="flex flex-col gap-3">
+                <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">
+                  Aktive Aktionen
+                </p>
+                <div className="flex flex-col gap-2">
+                  {relevantPromos.map((promo) => {
+                    const sitePrice = latestBySite.get(promo.site);
+                    return (
+                      <div key={promo.id}>
+                        <PromoCard promo={promo} compact />
+                        {promo.stackable && sitePrice && (
+                          <p className="mt-1 ml-1 text-[11px] text-blue-400">
+                            Tipp: Code mit aktuellem Sale kombinierbar
+                            {promo.discount_text.match(/(\d+)%/) && sitePrice.price
+                              ? ` \u2014 effektiver Preis: ${formatPrice(
+                                  sitePrice.price * (1 - Number(promo.discount_text.match(/(\d+)%/)![1]) / 100)
+                                )}`
+                              : promo.discount_text.match(/(\d+)[€$]/) && sitePrice.price
+                              ? ` \u2014 effektiver Preis: ${formatPrice(
+                                  sitePrice.price - Number(promo.discount_text.match(/(\d+)[€$]/)![1])
+                                )}`
+                              : ""}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
 

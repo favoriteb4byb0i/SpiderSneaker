@@ -3,15 +3,17 @@
 import { ExternalLink } from "lucide-react";
 import { SaleEventCard } from "@/components/sale-event-card";
 import { DealCard } from "@/components/deal-card";
-import type { Shop, SaleEvent, PriceSnapshot, Model, SiteName } from "@/types/database";
+import { PromoCard } from "@/components/promo-card";
+import type { Shop, SaleEvent, PriceSnapshot, Model, SiteName, ActivePromo } from "@/types/database";
 
 interface ShopDetailClientProps {
   shop: Shop;
   events: SaleEvent[];
   deals: (PriceSnapshot & { model: Model })[];
+  promos: ActivePromo[];
 }
 
-export function ShopDetailClient({ shop, events, deals }: ShopDetailClientProps) {
+export function ShopDetailClient({ shop, events, deals, promos }: ShopDetailClientProps) {
   return (
     <div className="flex flex-col gap-10 px-4 py-8 md:px-8">
       {/* Shop header / banner */}
@@ -46,6 +48,20 @@ export function ShopDetailClient({ shop, events, deals }: ShopDetailClientProps)
           </a>
         </div>
       </div>
+
+      {/* Aktive Aktionen (Active Promos) */}
+      {promos.length > 0 && (
+        <section>
+          <h2 className="mb-4 text-xl font-semibold text-white">
+            Aktive Aktionen
+          </h2>
+          <div className="grid gap-4 md:grid-cols-2">
+            {promos.map((promo) => (
+              <PromoCard key={promo.id} promo={promo} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Current Promotions */}
       {events.length > 0 && (

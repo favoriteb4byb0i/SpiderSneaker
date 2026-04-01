@@ -1,5 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import type { Model, PriceSnapshot, SaleEvent, ProductUrl } from "@/types/database";
+import type { Model, PriceSnapshot, SaleEvent, ProductUrl, ActivePromo } from "@/types/database";
 
 export async function getModels(): Promise<Model[]> {
   const supabase = createServerSupabaseClient();
@@ -133,4 +133,20 @@ export async function getActiveDealCountBySite(): Promise<Record<string, number>
     counts[d.site] = (counts[d.site] || 0) + 1;
   });
   return counts;
+}
+
+export async function getActivePromos(site?: string): Promise<ActivePromo[]> {
+  const supabase = createServerSupabaseClient();
+  let query = supabase
+    .from("active_promos")
+    .select("*")
+    .or(`valid_until.gte.${new Date().toISOString().split("T")[0]},valid_until.is.null`)
+    .order("created_at", { ascending: false });
+  if (site) query = query.eq("site", site);
+  const { data } = await query;
+  return (data as ActivePromo[]) ?? [];
+}
+
+export async function getPromosBySite(site: string): Promise<ActivePromo[]> {
+  return getActivePromos(site);
 }
