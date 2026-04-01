@@ -60,12 +60,12 @@ export function HomeClient({ deals, events, shops }: HomeClientProps) {
               <div key={snapshot.id} className="w-56 shrink-0">
                 <DealCard
                   model={snapshot.model}
-                  price={snapshot.price}
-                  originalPrice={snapshot.original_price ?? snapshot.price}
-                  discountPct={snapshot.discount_pct ?? 0}
+                  price={Number(snapshot.price)}
+                  originalPrice={Number(snapshot.original_price ?? snapshot.price)}
+                  discountPct={Number(snapshot.discount_pct ?? 0)}
                   site={snapshot.site}
                   url={snapshot.url}
-                  imageUrl={snapshot.model?.image_url ?? "/placeholder-shoe.png"}
+                  imageUrl={snapshot.model?.image_url ?? ""}
                 />
               </div>
             ))}

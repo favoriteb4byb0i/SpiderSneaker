@@ -125,12 +125,12 @@ export function DealsClient({ deals }: DealsClientProps) {
             <DealCard
               key={snapshot.id}
               model={snapshot.model}
-              price={snapshot.price}
-              originalPrice={snapshot.original_price ?? snapshot.price}
-              discountPct={snapshot.discount_pct ?? 0}
+              price={Number(snapshot.price)}
+              originalPrice={Number(snapshot.original_price ?? snapshot.price)}
+              discountPct={Number(snapshot.discount_pct ?? 0)}
               site={snapshot.site}
               url={snapshot.url}
-              imageUrl={snapshot.model?.image_url ?? "/placeholder-shoe.png"}
+              imageUrl={snapshot.model?.image_url ?? ""}
             />
           ))}
         </div>

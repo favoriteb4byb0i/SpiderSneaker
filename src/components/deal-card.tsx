@@ -66,14 +66,20 @@ export function DealCard({
       )}
     >
       {/* Image section */}
-      <Link href={`/model/${model.id}`} className="relative aspect-square w-full overflow-hidden bg-neutral-900 block">
-        <Image
-          src={imageUrl}
-          alt={`${model.brand} ${model.name}`}
-          fill
-          className="object-cover transition-transform duration-300 group-hover:scale-105"
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-        />
+      <Link href={`/model/${model?.id ?? ""}`} className="relative aspect-square w-full overflow-hidden bg-neutral-900 block">
+        {imageUrl ? (
+          <Image
+            src={imageUrl}
+            alt={`${model?.brand ?? ""} ${model?.name ?? ""}`}
+            fill
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-neutral-700">
+            {model?.brand?.[0] ?? "?"}{model?.name?.[0] ?? ""}
+          </div>
+        )}
 
         {/* Watchlist heart - top left */}
         {onWatchlistToggle && (
@@ -127,10 +133,10 @@ export function DealCard({
       <div className="flex flex-1 flex-col gap-2 p-4">
         <div>
           <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">
-            {model.brand}
+            {model?.brand ?? "Unknown"}
           </p>
-          <Link href={`/model/${model.id}`} className="mt-0.5 block text-sm font-semibold leading-tight text-white line-clamp-2 hover:text-blue-400 transition-colors">
-            {model.name}
+          <Link href={`/model/${model?.id ?? ""}`} className="mt-0.5 block text-sm font-semibold leading-tight text-white line-clamp-2 hover:text-blue-400 transition-colors">
+            {model?.name ?? "Unknown Model"}
           </Link>
         </div>
 
